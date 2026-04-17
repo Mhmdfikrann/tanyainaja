@@ -20,7 +20,13 @@ type ConversationItem = {
   updatedAt: string;
 };
 
-export function Sidebar() {
+export function Sidebar({
+  userAvatarUrl,
+  userName,
+}: {
+  userAvatarUrl: string | null;
+  userName: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -55,22 +61,9 @@ export function Sidebar() {
   }, [pathname]);
 
   async function createConversation() {
-    const response = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      toast.error(payload.error ?? "Gagal membuat percakapan baru");
-      return;
-    }
-
-    router.push(`/chat/${payload.id}`);
+    router.push("/chat");
     setCollapsed(false);
     setMobileOpen(false);
-    await fetchConversations();
   }
 
   async function removeConversation(id: string) {
@@ -104,41 +97,40 @@ export function Sidebar() {
 
   const actionItemBase =
     "flex h-10 items-center gap-3 rounded-xl px-3 text-sm text-[#e7dddd] transition hover:bg-white/10";
+  const userInitial = userName.trim().charAt(0).toUpperCase() || "U";
 
   const fullPanel = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-3 pb-2 pt-3">
-        <div className="flex items-center gap-2 px-1">
-          <div className="flex items-center justify-center">
-            <Image
-              alt="Logo TanyainAja"
-              className="h-5 w-5 object-contain"
-              height={20}
-              src="/logo-tanyainaja.png"
-              width={20}
-            />
-          </div>
+      <div className="px-4 pb-4 pt-4 lg:pb-2">
+        <div className="flex items-center justify-start lg:justify-between">
+          <Image
+            alt="Logo TanyainAja"
+            className="h-6 w-6 object-contain"
+            height={24}
+            src="/logo-tanyainaja.png"
+            width={24}
+          />
+          <button
+            aria-label="Collapse sidebar"
+            className="hidden rounded-lg p-1.5 text-[#b8a7a7] transition hover:bg-white/10 hover:text-[#f3ebeb] lg:inline-flex"
+            onClick={() => setCollapsed(true)}
+            type="button"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
         </div>
-        <button
-          aria-label="Collapse sidebar"
-          className="rounded-lg p-1.5 text-[#b8a7a7] transition hover:bg-white/10 hover:text-[#f3ebeb]"
-          onClick={() => setCollapsed(true)}
-          type="button"
-        >
-          <PanelLeftClose className="h-4 w-4" />
-        </button>
       </div>
 
-      <div className="space-y-1 px-2">
+      <div className="space-y-1 px-2 pt-2 lg:pt-3">
         <button className={`${actionItemBase} bg-white/10`} onClick={() => void createConversation()} type="button">
           <MessageSquarePlus className="h-4 w-4 shrink-0" />
           New chat
         </button>
       </div>
 
-      <div className="mt-4 min-h-0 flex-1 px-2">
+      <div className="mt-5 flex min-h-0 flex-1 flex-col px-2">
         <p className="px-2 pb-2 text-xs font-medium uppercase tracking-[0.14em] text-[#9f8d8d]">Recents</p>
-        <div className="h-full space-y-1 overflow-y-auto pb-3">
+        <div className="app-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto pb-24 lg:pb-3">
           {loading ? (
             <div className="space-y-2 px-2">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -188,11 +180,21 @@ export function Sidebar() {
           href="/chat/profile"
           onClick={() => setMobileOpen(false)}
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--color-primary)] text-xs font-semibold text-white">
-            N
-          </div>
+          {userAvatarUrl ? (
+            <Image
+              alt={`Foto profil ${userName}`}
+              className="h-7 w-7 rounded-full object-cover"
+              height={28}
+              src={userAvatarUrl}
+              width={28}
+            />
+          ) : (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--color-primary)] text-xs font-semibold text-white">
+              {userInitial}
+            </div>
+          )}
           <div className="min-w-0">
-            <p className="truncate text-sm text-[#f2e8e8]">Mohammad Fikran</p>
+            <p className="truncate text-sm text-[#f2e8e8]">{userName}</p>
             <p className="text-[11px] text-[#9f8d8d]">TanyainAja</p>
           </div>
         </Link>
@@ -233,13 +235,21 @@ export function Sidebar() {
       <Link
         aria-label="Buka halaman profile"
         className={[
-          "flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--color-primary)] text-xs font-semibold text-white transition hover:brightness-110",
+          "flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[color:var(--color-primary)] text-xs font-semibold text-white transition hover:brightness-110",
           onProfilePage ? "ring-2 ring-[color:var(--color-primary-soft)] ring-offset-2 ring-offset-[#121318]" : "",
         ].join(" ")}
         href="/chat/profile"
         onClick={() => setMobileOpen(false)}
       >
-        N
+        {userAvatarUrl ? (
+          <Image
+            alt={`Foto profil ${userName}`}
+            className="h-full w-full object-cover"
+            height={32}
+            src={userAvatarUrl}
+            width={32}
+          />
+        ) : userInitial}
       </Link>
     </div>
   );
@@ -249,11 +259,19 @@ export function Sidebar() {
       <button
         aria-controls="mobile-chat-drawer"
         aria-expanded={mobileOpen}
-        className="fixed left-3 top-3 z-40 rounded-xl border border-white/15 bg-[#18191f] p-2 text-[#f3eeee] shadow-lg lg:hidden"
+        className={[
+          "fixed left-3 top-3 z-20 lg:hidden",
+          mobileOpen ? "hidden" : "block",
+        ].join(" ")}
         onClick={() => setMobileOpen((value) => !value)}
         type="button"
       >
-        <Menu className="h-5 w-5" />
+        <span className="flex items-center gap-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-[#18191f] text-[#f3eeee] shadow-lg">
+            <Menu className="h-5 w-5" />
+          </span>
+          <span className="text-base font-bold tracking-[0.01em] text-[#f3ebeb]">TanyainAja</span>
+        </span>
       </button>
 
       <aside
@@ -274,18 +292,7 @@ export function Sidebar() {
             type="button"
           />
           <div className="absolute inset-y-0 left-0 w-[min(86vw,300px)] border-r border-white/10 bg-[#121318]">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <p className="text-sm font-medium text-[#f3ebeb]">Chat</p>
-              <button
-                aria-label="Tutup panel"
-                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-[#f2eaea]"
-                onClick={() => setMobileOpen(false)}
-                type="button"
-              >
-                Tutup
-              </button>
-            </div>
-            <div className="h-[calc(100%-52px)]">{fullPanel}</div>
+            <div className="h-full">{fullPanel}</div>
           </div>
         </div>
       ) : null}

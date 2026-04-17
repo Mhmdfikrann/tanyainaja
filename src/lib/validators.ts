@@ -40,11 +40,21 @@ export const uploadFileSchema = z.object({
   publicUrl: z.string().min(1),
 });
 
-export const chatSchema = z.object({
-  conversationId: z.uuid("ID percakapan tidak valid"),
-  content: z.string().trim().min(1, "Pesan tidak boleh kosong"),
-  attachments: z.array(uploadFileSchema).default([]),
-});
+export const chatSchema = z
+  .object({
+    conversationId: z.uuid("ID percakapan tidak valid").nullable().optional(),
+    content: z.string().trim().default(""),
+    attachments: z.array(uploadFileSchema).default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.content.trim() && value.attachments.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pesan tidak boleh kosong",
+        path: ["content"],
+      });
+    }
+  });
 
 export const profileSchema = z
   .object({

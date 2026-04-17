@@ -16,6 +16,7 @@ export const users = mysqlTable("users", {
   phone: varchar("phone", { length: 20 }).unique(),
   email: varchar("email", { length: 255 }).unique(),
   passwordHash: varchar("password_hash", { length: 255 }),
+  avatarUrl: varchar("avatar_url", { length: 500 }),
   createdAt: datetime("created_at", { mode: "date" }).notNull(),
   updatedAt: datetime("updated_at", { mode: "date" }).notNull(),
 });
@@ -77,8 +78,28 @@ export const attachments = mysqlTable("attachments", {
   createdAt: datetime("created_at", { mode: "date" }).notNull(),
 });
 
+export const aiUsageEvents = mysqlTable(
+  "ai_usage_events",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    conversationId: varchar("conversation_id", { length: 36 }),
+    model: varchar("model", { length: 100 }).notNull(),
+    promptTokens: int("prompt_tokens").notNull().default(0),
+    completionTokens: int("completion_tokens").notNull().default(0),
+    totalTokens: int("total_tokens").notNull().default(0),
+    createdAt: datetime("created_at", { mode: "date" }).notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("ai_usage_events_user_id_idx").on(table.userId),
+    conversationIdIdx: index("ai_usage_events_conversation_id_idx").on(table.conversationId),
+    createdAtIdx: index("ai_usage_events_created_at_idx").on(table.createdAt),
+  }),
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   conversations: many(conversations),
+  usageEvents: many(aiUsageEvents),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
@@ -87,6 +108,7 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
     references: [users.id],
   }),
   messages: many(messages),
+  usageEvents: many(aiUsageEvents),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -101,6 +123,17 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
   message: one(messages, {
     fields: [attachments.messageId],
     references: [messages.id],
+  }),
+}));
+
+export const aiUsageEventsRelations = relations(aiUsageEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [aiUsageEvents.userId],
+    references: [users.id],
+  }),
+  conversation: one(conversations, {
+    fields: [aiUsageEvents.conversationId],
+    references: [conversations.id],
   }),
 }));
 

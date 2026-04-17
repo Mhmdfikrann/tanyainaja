@@ -5,7 +5,7 @@ function inferVisionSupport(model: string, baseUrl: string) {
     return false;
   }
 
-  return /(4o|vision|omni)/i.test(model);
+  return /(4o|vision|omni|gpt-5(?:[.-]\d+)?(?:-[a-z0-9]+)?)/i.test(model);
 }
 
 for (const key of requiredServerEnv) {
@@ -20,11 +20,14 @@ const aiSupportsVision =
   process.env.AI_SUPPORTS_VISION != null
     ? process.env.AI_SUPPORTS_VISION === "true"
     : inferVisionSupport(aiModel, aiBaseUrl);
+const aiVisionMaxImageMb = Number.parseInt(process.env.AI_VISION_MAX_IMAGE_MB ?? "4", 10);
 
 export const env = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   nextAuthSecret: process.env.NEXTAUTH_SECRET ?? "",
   nextAuthUrl: process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+  superAdminEmail: process.env.SUPERADMIN_EMAIL ?? "",
+  superAdminPassword: process.env.SUPERADMIN_PASSWORD ?? "",
   authOtpWebhookUrl: process.env.AUTH_OTP_WEBHOOK_URL ?? "",
   authOtpWebhookToken: process.env.AUTH_OTP_WEBHOOK_TOKEN ?? "",
   authOtpCodeTtlSec: Number.parseInt(process.env.AUTH_OTP_CODE_TTL_SEC ?? "300", 10),
@@ -34,5 +37,7 @@ export const env = {
   aiApiKey: process.env.AI_API_KEY ?? "",
   aiModel,
   aiSupportsVision,
+  aiVisionMaxImageMb,
+  aiVisionMaxImageBytes: aiVisionMaxImageMb * 1024 * 1024,
   publicAiSupportsVision: aiSupportsVision,
 };

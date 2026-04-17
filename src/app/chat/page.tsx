@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { randomUUID } from "node:crypto";
-import { db } from "@/db";
-import { conversations as conversationsTable } from "@/db/schema";
-import { getConversationList } from "@/lib/conversations";
+import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { getAuthSession } from "@/lib/auth";
+import { env } from "@/lib/env";
+
+export const dynamic = "force-dynamic";
 
 export default async function ChatIndexPage() {
   const session = await getAuthSession();
@@ -12,22 +12,15 @@ export default async function ChatIndexPage() {
     redirect("/login");
   }
 
-  const conversations = await getConversationList(session.user.id);
-
-  if (conversations[0]) {
-    redirect(`/chat/${conversations[0].id}`);
-  }
-
-  const now = new Date();
-  const id = randomUUID();
-
-  await db.insert(conversationsTable).values({
-    id,
-    userId: session.user.id,
-    title: "Chat Baru",
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  redirect(`/chat/${id}`);
+  return (
+    <ChatWorkspace
+      aiModel={env.aiModel}
+      aiVisionMaxImageMb={env.aiVisionMaxImageMb}
+      aiSupportsVision={env.aiSupportsVision}
+      conversationId={null}
+      initialMessages={[]}
+      initialLoading={false}
+      userName={session.user.name ?? session.user.email ?? "User"}
+    />
+  );
 }

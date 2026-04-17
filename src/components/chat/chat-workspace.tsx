@@ -29,17 +29,24 @@ async function readErrorResponse(response: Response) {
 }
 
 export function ChatWorkspace({
+  aiModel,
+  aiVisionMaxImageMb,
+  aiSupportsVision,
   conversationId,
   initialMessages,
   initialLoading = false,
   userName,
 }: {
-  conversationId: string;
+  aiModel: string;
+  aiVisionMaxImageMb: number;
+  aiSupportsVision: boolean;
+  conversationId: string | null;
   initialMessages: ChatMessage[];
   initialLoading?: boolean;
   userName: string;
 }) {
   const router = useRouter();
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationId);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [loading, setLoading] = useState(initialLoading);
   const pendingChunksRef = useRef("");
@@ -54,6 +61,11 @@ export function ChatWorkspace({
       }
     };
   }, []);
+
+  useEffect(() => {
+    setCurrentConversationId(conversationId);
+    setMessages(initialMessages);
+  }, [conversationId, initialMessages]);
 
   const stopTypingInterval = useCallback(() => {
     if (typingIntervalRef.current) {
@@ -165,7 +177,7 @@ export function ChatWorkspace({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          conversationId,
+          conversationId: currentConversationId,
           content: payload.content,
           attachments: payload.attachments,
         }),
@@ -173,6 +185,12 @@ export function ChatWorkspace({
 
       if (!response.ok || !response.body) {
         throw new Error(await readErrorResponse(response));
+      }
+
+      const nextConversationId = response.headers.get("x-conversation-id");
+
+      if (nextConversationId && nextConversationId !== currentConversationId) {
+        setCurrentConversationId(nextConversationId);
       }
 
       const reader = response.body.getReader();
@@ -193,6 +211,9 @@ export function ChatWorkspace({
       typingDoneRef.current = true;
       startTypingInterval();
       await waitTypingToFinish();
+      if (nextConversationId && nextConversationId !== conversationId) {
+        router.replace(`/chat/${nextConversationId}`);
+      }
       router.refresh();
     } catch (error) {
       pendingChunksRef.current = "";
@@ -210,7 +231,7 @@ export function ChatWorkspace({
       typingTargetIdRef.current = null;
       setLoading(false);
     }
-  }, [conversationId, router, startTypingInterval, stopTypingInterval, waitTypingToFinish]);
+  }, [conversationId, currentConversationId, router, startTypingInterval, stopTypingInterval, waitTypingToFinish]);
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -218,7 +239,14 @@ export function ChatWorkspace({
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#101114] via-[#101114]/80 to-transparent" />
       <div className="relative z-10">
-        <MessageInput conversationId={conversationId} disabled={loading} onSend={handleSend} />
+        <MessageInput
+          aiModel={aiModel}
+          aiVisionMaxImageMb={aiVisionMaxImageMb}
+          aiSupportsVision={aiSupportsVision}
+          conversationId={currentConversationId ?? "new"}
+          disabled={loading}
+          onSend={handleSend}
+        />
       </div>
     </div>
   );

@@ -4,7 +4,6 @@ import { ArrowUp, Loader2, Plus, X } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
-import { env } from "@/lib/env";
 import { fileSizeLabel } from "@/lib/utils";
 
 type UploadItem = {
@@ -19,10 +18,16 @@ type UploadItem = {
 const IMAGE_TYPES = new Set(["image/png", "image/jpg", "image/jpeg", "image/webp"]);
 
 function MessageInputComponent({
+  aiModel,
+  aiVisionMaxImageMb,
+  aiSupportsVision,
   conversationId,
   disabled,
   onSend,
 }: {
+  aiModel: string;
+  aiVisionMaxImageMb: number;
+  aiSupportsVision: boolean;
   conversationId: string;
   disabled?: boolean;
   onSend: (payload: { content: string; attachments: UploadItem[] }) => Promise<void>;
@@ -49,11 +54,19 @@ function MessageInputComponent({
     setUploading(true);
 
     try {
+      if (conversationId === "new") {
+        throw new Error("Kirim pesan pertama dulu sebelum menambahkan lampiran, agar chat baru tersimpan.");
+      }
+
       const nextAttachments: UploadItem[] = [];
 
       for (const file of Array.from(files)) {
-        if (IMAGE_TYPES.has(file.type) && !env.publicAiSupportsVision) {
-          throw new Error(`Model AI saat ini (${env.aiModel}) belum mendukung analisis gambar. Upload file teks, PDF, atau markdown saja.`);
+        if (IMAGE_TYPES.has(file.type) && file.size > aiVisionMaxImageMb * 1024 * 1024) {
+          throw new Error(`Ukuran gambar terlalu besar untuk dianalisis AI. Maksimal ${aiVisionMaxImageMb} MB per gambar.`);
+        }
+
+        if (IMAGE_TYPES.has(file.type) && !aiSupportsVision) {
+          throw new Error(`Model AI saat ini (${aiModel}) belum mendukung analisis gambar. Upload file teks, PDF, atau markdown saja.`);
         }
 
         const formData = new FormData();

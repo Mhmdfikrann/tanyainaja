@@ -16,52 +16,61 @@ export async function getConversationList(userId: string) {
 }
 
 export async function getConversationDetail(conversationId: string, userId: string) {
-  const [conversation] = await db
-    .select()
-    .from(conversations)
-    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
-
-  if (!conversation) {
+  if (!conversationId || !userId) {
     return null;
   }
 
-  const conversationMessages = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt));
+  try {
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
 
-  const messageIds = conversationMessages.map((message) => message.id);
-  const messageAttachments = messageIds.length
-    ? await db
-        .select()
-        .from(attachments)
-        .where(inArray(attachments.messageId, messageIds))
-    : [];
+    if (!conversation) {
+      return null;
+    }
 
-  const attachmentsByMessageId = new Map<string, typeof messageAttachments>();
+    const conversationMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(asc(messages.createdAt));
 
-  for (const attachment of messageAttachments) {
-    const current = attachmentsByMessageId.get(attachment.messageId) ?? [];
-    current.push(attachment);
-    attachmentsByMessageId.set(attachment.messageId, current);
+    const messageIds = conversationMessages.map((message) => message.id);
+    const messageAttachments = messageIds.length
+      ? await db
+          .select()
+          .from(attachments)
+          .where(inArray(attachments.messageId, messageIds))
+      : [];
+
+    const attachmentsByMessageId = new Map<string, typeof messageAttachments>();
+
+    for (const attachment of messageAttachments) {
+      const current = attachmentsByMessageId.get(attachment.messageId) ?? [];
+      current.push(attachment);
+      attachmentsByMessageId.set(attachment.messageId, current);
+    }
+
+    return {
+      conversation,
+      messages: conversationMessages.map((message) => ({
+        ...message,
+        attachments:
+          Array.isArray(message.attachments) && message.attachments.length > 0
+            ? message.attachments
+            : (attachmentsByMessageId.get(message.id) ?? []).map((attachment) => ({
+                id: attachment.id,
+                fileName: attachment.fileName,
+                fileType: attachment.fileType,
+                fileSize: attachment.fileSize,
+                storagePath: attachment.storagePath,
+                publicUrl: attachment.storagePath,
+              })),
+      })),
+    };
+  } catch (error) {
+    console.error("Failed to load conversation detail", { conversationId, userId, error });
+    return null;
   }
-
-  return {
-    conversation,
-    messages: conversationMessages.map((message) => ({
-      ...message,
-      attachments:
-        Array.isArray(message.attachments) && message.attachments.length > 0
-          ? message.attachments
-          : (attachmentsByMessageId.get(message.id) ?? []).map((attachment) => ({
-              id: attachment.id,
-              fileName: attachment.fileName,
-              fileType: attachment.fileType,
-              fileSize: attachment.fileSize,
-              storagePath: attachment.storagePath,
-              publicUrl: attachment.storagePath,
-            })),
-    })),
-  };
 }

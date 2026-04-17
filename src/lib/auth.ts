@@ -56,6 +56,42 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           name: user.name,
           email: user.email,
+          image: user.avatarUrl ?? undefined,
+          role: "user",
+        };
+      },
+    }),
+    CredentialsProvider({
+      name: "Superadmin",
+      id: "superadmin",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(rawCredentials) {
+        const parsed = loginSchema.safeParse(rawCredentials);
+
+        if (!parsed.success) {
+          return null;
+        }
+
+        if (!env.superAdminEmail || !env.superAdminPassword) {
+          return null;
+        }
+
+        if (
+          parsed.data.email !== env.superAdminEmail
+          || parsed.data.password !== env.superAdminPassword
+        ) {
+          return null;
+        }
+
+        return {
+          id: "superadmin",
+          name: "Superadmin",
+          email: env.superAdminEmail,
+          image: null,
+          role: "superadmin",
         };
       },
     }),
@@ -153,16 +189,30 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           name: user.name,
           email: user.email ?? undefined,
+          image: user.avatarUrl ?? undefined,
+          role: "user",
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email ?? undefined;
+        token.image = user.image ?? undefined;
+        token.role = user.role ?? "user";
+      }
+
+      if (trigger === "update" && session) {
+        if (typeof session.name === "string") {
+          token.name = session.name;
+        }
+
+        if ("image" in session) {
+          token.image = typeof session.image === "string" ? session.image : null;
+        }
       }
 
       return token;
@@ -172,6 +222,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id ?? "";
         session.user.name = token.name ?? session.user.name ?? "";
         session.user.email = token.email ?? session.user.email ?? null;
+        session.user.image = token.image ?? session.user.image ?? null;
+        session.user.role = token.role ?? "user";
       }
 
       return session;

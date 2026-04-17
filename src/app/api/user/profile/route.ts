@@ -51,5 +51,16 @@ export async function PATCH(request: Request) {
     })
     .where(eq(users.id, user.id));
 
-  return NextResponse.json({ ok: true });
+  const [updatedUser] = await db.select().from(users).where(eq(users.id, user.id));
+
+  return NextResponse.json({
+    ok: true,
+    user: updatedUser
+      ? {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          avatarUrl: updatedUser.avatarUrl,
+        }
+      : null,
+  });
 }

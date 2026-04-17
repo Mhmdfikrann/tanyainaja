@@ -1,39 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FileUp, FolderKanban, ShieldCheck, Sparkles, TimerReset, Workflow } from "lucide-react";
+import { BarChart3, FileImage, MessageSquareText, ShieldCheck, TimerReset, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const features = [
   {
     icon: Workflow,
-    title: "Chat Yang Nyambung",
-    description: "Riwayat percakapan terstruktur jadi konteks tetap nyambung walau diskusi panjang.",
+    title: "Context Per Chat",
+    description: "Setiap chat punya memory sendiri. Konteks percakapan tetap fokus dan tidak tercampur dengan chat lain.",
   },
   {
-    icon: FileUp,
-    title: "Upload Dokumen",
-    description: "Upload PDF, TXT, Markdown, atau gambar untuk analisis yang lebih relevan.",
+    icon: FileImage,
+    title: "Bisa Baca Gambar",
+    description: "Upload gambar lalu minta AI menjelaskan isi visual, teks di gambar, dan konteks utamanya langsung dari chat yang sama.",
   },
   {
     icon: TimerReset,
     title: "Respons Real-time",
-    description: "Jawaban tampil streaming supaya kamu tidak perlu menunggu teks selesai penuh.",
+    description: "Jawaban tampil bertahap secara streaming supaya respons terasa cepat dan tidak menunggu full output selesai.",
   },
   {
     icon: ShieldCheck,
-    title: "Aman di Server",
-    description: "Konfigurasi provider AI disimpan di server agar kunci API tidak terekspos ke client.",
+    title: "Login WhatsApp OTP",
+    description: "Masuk dan daftar lewat verifikasi kode WhatsApp, jadi alur akses lebih cepat tanpa password manual.",
   },
   {
-    icon: FolderKanban,
-    title: "Workspace Rapi",
-    description: "Semua chat tersimpan dan bisa dibuka lagi kapan saja dari sidebar.",
+    icon: MessageSquareText,
+    title: "Recent Lebih Bersih",
+    description: "Chat baru hanya muncul di sidebar setelah kamu benar-benar mengirim pesan pertama.",
   },
   {
-    icon: Sparkles,
-    title: "Siap Produksi",
-    description: "UI fokus, ringan, dan siap dipakai untuk belajar, kerja harian, atau support tim.",
+    icon: BarChart3,
+    title: "Profile & Usage",
+    description: "User bisa ganti foto profil, lihat total request, total token, ranking pribadi, dan top 10 user teraktif.",
   },
 ];
 
@@ -68,15 +68,15 @@ export default function HomePage() {
           <Card className="overflow-hidden border-[#2f3442] bg-[linear-gradient(140deg,#0f131d_0%,#111826_55%,#16111a_100%)] p-8 sm:p-10">
             <div className="max-w-2xl space-y-6">
               <div className="inline-flex rounded-full border border-[#31394a] bg-black/35 px-4 py-2 text-sm font-medium text-[#f2cfd2]">
-                AI Chat Dengan Kontrol Penuh
+                AI Workspace Yang Sudah Dipakai Buat Kerja Harian
               </div>
 
               <div className="space-y-4">
                 <h1 className="text-4xl font-semibold leading-tight text-[#f6f7fa] sm:text-5xl">
-                  Satu tempat untuk tanya apa saja, olah dokumen, dan bikin keputusan lebih cepat.
+                  Tanya, baca gambar, pantau usage, dan kelola chat dengan alur yang tetap rapi.
                 </h1>
                 <p className="max-w-xl text-base leading-8 text-[color:var(--color-muted-foreground)] sm:text-lg">
-                  TanyainAja dirancang untuk workflow harian: diskusi ide, ringkas dokumen, dan cari jawaban yang bisa langsung dipakai.
+                  TanyainAja dibuat untuk kebutuhan operasional yang cepat: login via WhatsApp OTP, kirim pertanyaan teks atau gambar, lanjutkan chat penting, dan cek penggunaan token tiap user dari halaman profile.
                 </p>
               </div>
 
@@ -90,9 +90,9 @@ export default function HomePage() {
               </div>
 
               <div className="grid gap-4 pt-2 sm:grid-cols-3">
-                <Stat title="Streaming Response" value="Real-time" />
-                <Stat title="Riwayat Chat" value="Persisten" />
-                <Stat title="Upload File" value="Siap Pakai" />
+                <Stat title="Login" value="WhatsApp OTP" />
+                <Stat title="Vision" value="Baca Gambar" />
+                <Stat title="Usage" value="Top 10 User" />
               </div>
             </div>
           </Card>
@@ -101,19 +101,19 @@ export default function HomePage() {
             <div className="flex h-full flex-col justify-between rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5">
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-white/60">
-                  <span>Preview Workflow</span>
-                  <span>Live Stream</span>
+                  <span>Preview Chat</span>
+                  <span>Vision + Usage</span>
                 </div>
                 <div className="space-y-3">
-                  <Bubble role="user">Ringkas dokumen ini dan kasih action item paling penting.</Bubble>
+                  <Bubble role="user">Tolong baca gambar ini dan jelaskan isi utamanya.</Bubble>
                   <Bubble role="assistant">
-                    Dokumen sudah dianalisis. Saya tampilkan ringkasan singkat dulu, lalu lanjutkan ke poin aksi yang bisa langsung dijalankan.
+                    Saya baca dulu gambarnya, lalu saya jelaskan isi visual, teks yang terlihat, dan konteks yang paling relevan.
                   </Bubble>
-                  <Bubble role="assistant">1. Fokus utama dokumen adalah efisiensi operasional dan percepatan onboarding tim.</Bubble>
+                  <Bubble role="assistant">Di profile, kamu juga bisa lihat total request, total token, ranking kamu, dan user dengan penggunaan token tertinggi.</Bubble>
                 </div>
               </div>
               <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/30 p-4 text-sm text-white/75">
-                Sidebar riwayat, chat baru, dan pengaturan profile tersedia setelah login.
+                Chat kosong tidak langsung masuk ke recent. Percakapan baru hanya tersimpan setelah pesan pertama benar-benar dikirim, jadi sidebar tetap bersih.
               </div>
             </div>
           </Card>
@@ -122,7 +122,7 @@ export default function HomePage() {
         <section id="fitur" className="space-y-5 pt-4">
           <div className="space-y-2">
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-[color:var(--color-primary)]">Fitur Utama</p>
-            <h2 className="text-3xl font-semibold text-[color:var(--color-foreground)]">Dirancang untuk kerja cepat, bukan cuma chat biasa</h2>
+            <h2 className="text-3xl font-semibold text-[color:var(--color-foreground)]">Sesuai kebutuhan produk yang sekarang, bukan sekadar landing page generik</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -143,9 +143,9 @@ export default function HomePage() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl space-y-3">
                 <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">Siap Jalan</p>
-                <h2 className="text-3xl font-semibold">Buat akun, login, lalu mulai percakapan pertama kamu.</h2>
+                <h2 className="text-3xl font-semibold">Daftar, verifikasi WhatsApp, kirim pesan pertama, lalu semua usage mulai tercatat.</h2>
                 <p className="text-sm leading-7 text-white/80">
-                  Semua percakapan tersimpan, bisa dilanjutkan kapan pun, dan tetap fokus pada produktivitas.
+                  Begitu pesan pertama terkirim, chat akan masuk ke recent, AI mulai membangun konteks per chat, dan penggunaan token user ikut tercatat di halaman profile.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
