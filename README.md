@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TanyainAja
 
-## Getting Started
+Web app AI chat berbasis Next.js 16 dengan autentikasi WhatsApp OTP, riwayat percakapan, upload lampiran, markdown rendering, dan provider OpenAI-compatible.
 
-First, run the development server:
+## Environment
+
+Salin `.env.example` menjadi `.env.local`, lalu isi nilai berikut:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+DATABASE_URL=mysql://root:password@localhost:3306/tanyainaja
+NEXTAUTH_SECRET=change-me-to-a-long-random-string
+NEXTAUTH_URL=http://localhost:3000
+AUTH_OTP_WEBHOOK_URL=
+AUTH_OTP_WEBHOOK_TOKEN=
+AUTH_OTP_CODE_TTL_SEC=300
+AUTH_OTP_RESEND_COOLDOWN_SEC=60
+AUTH_OTP_MAX_ATTEMPTS=5
+AI_BASE_URL=https://api.openai.com/v1
+AI_API_KEY=
+AI_MODEL=gpt-4o-mini
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Jalankan dependensi dan server lokal:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run db:generate
+npm run db:migrate
+npm run dev
+```
 
-## Learn More
+## Testing Checklist
 
-To learn more about Next.js, take a look at the following resources:
+- Request OTP via nomor WhatsApp berhasil (webhook n8n terpanggil)
+- Verifikasi OTP berhasil lalu user masuk ke `/chat`
+- Login dan logout berhasil
+- Route `/chat`, `/api/conversations`, `/api/chat`, `/api/upload`, dan `/api/user/profile` terproteksi
+- Buat percakapan baru, kirim pesan, dan lihat respons streaming
+- Upload PNG, JPG, WEBP, PDF, TXT, atau Markdown dengan batas 10MB
+- Markdown assistant merender heading, list, code block, tabel, dan link eksternal
+- Sidebar responsif di 375px, 768px, dan 1280px
+- Profil dapat mengubah nama dan password
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Security Checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `AI_API_KEY` hanya dibaca di server dari `src/lib/env.ts`
+- Ownership percakapan diverifikasi sebelum detail, upload, dan chat diproses
+- OTP disimpan dalam bentuk hash, memiliki expiry, cooldown resend, dan limit percobaan
+- Upload menolak tipe file di luar whitelist dan ukuran di atas 10MB
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Set semua environment variable di platform deployment.
+2. Pastikan `NEXTAUTH_URL` mengarah ke domain production.
+3. Jalankan `npm run build` untuk validasi build production.
+4. Deploy ke Vercel dan isi environment variables yang sama.
+5. Jalankan `npm run db:migrate` ke database production.
+6. Verifikasi landing page, register/login, chat streaming, upload file, dan log runtime setelah deploy.
