@@ -32,6 +32,24 @@ function toDataUrl(buffer: Buffer, mediaType: string) {
   return `data:${mediaType};base64,${buffer.toString("base64")}`;
 }
 
+function decodeDataUrl(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;,]+)?(?:;(base64))?,([\s\S]+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, mediaType = "application/octet-stream", encoding, payload] = match;
+  const buffer = encoding?.toLowerCase() === "base64"
+    ? Buffer.from(payload, "base64")
+    : Buffer.from(decodeURIComponent(payload), "utf8");
+
+  return {
+    buffer,
+    mediaType: mediaType === "image/jpg" ? "image/jpeg" : mediaType,
+  };
+}
+
 function getCompletionEndpoint() {
   return `${env.aiBaseUrl.replace(/\/$/, "")}/chat/completions`;
 }
@@ -398,6 +416,13 @@ export async function POST(request: Request) {
       const imagePayloads: Array<{ mediaType: string; buffer: Buffer }> = [];
 
       for (const attachment of imageAttachments) {
+        const inlinePayload = decodeDataUrl(attachment.publicUrl ?? "");
+
+        if (inlinePayload) {
+          imagePayloads.push(inlinePayload);
+          continue;
+        }
+
         const filePath = path.join(process.cwd(), "public", attachment.storagePath.replace(/^\//, ""));
 
         try {

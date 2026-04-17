@@ -270,7 +270,9 @@ export function Sidebar({
           <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-[#18191f] text-[#f3eeee] shadow-lg">
             <Menu className="h-5 w-5" />
           </span>
-          <span className="text-base font-bold tracking-[0.01em] text-[#f3ebeb]">TanyainAja</span>
+          <span className="rounded-xl border border-white/15 bg-[#18191f] px-3 py-2 text-base font-bold tracking-[0.01em] text-[#f3ebeb] shadow-lg">
+            TanyainAja
+          </span>
         </span>
       </button>
 

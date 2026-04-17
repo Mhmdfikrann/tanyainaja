@@ -17,6 +17,30 @@ type UploadItem = {
 
 const IMAGE_TYPES = new Set(["image/png", "image/jpg", "image/jpeg", "image/webp"]);
 
+async function toInlineAttachment(file: File): Promise<UploadItem> {
+  const publicUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Gagal membaca file"));
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file"));
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    publicUrl,
+    storagePath: `inline:${crypto.randomUUID()}`,
+  };
+}
+
 function MessageInputComponent({
   aiModel,
   aiVisionMaxImageMb,
@@ -54,10 +78,6 @@ function MessageInputComponent({
     setUploading(true);
 
     try {
-      if (conversationId === "new") {
-        throw new Error("Kirim pesan pertama dulu sebelum menambahkan lampiran, agar chat baru tersimpan.");
-      }
-
       const nextAttachments: UploadItem[] = [];
 
       for (const file of Array.from(files)) {
@@ -67,6 +87,11 @@ function MessageInputComponent({
 
         if (IMAGE_TYPES.has(file.type) && !aiSupportsVision) {
           throw new Error(`Model AI saat ini (${aiModel}) belum mendukung analisis gambar. Upload file teks, PDF, atau markdown saja.`);
+        }
+
+        if (conversationId === "new") {
+          nextAttachments.push(await toInlineAttachment(file));
+          continue;
         }
 
         const formData = new FormData();
@@ -123,7 +148,7 @@ function MessageInputComponent({
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 pb-5 sm:px-6 sm:pb-6">
+    <div className="mx-auto w-full max-w-4xl px-4 pb-3 sm:px-6 sm:pb-4">
       <input
         ref={fileInputRef}
         accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.md"

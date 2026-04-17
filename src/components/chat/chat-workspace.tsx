@@ -237,7 +237,7 @@ export function ChatWorkspace({
     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <MessageList loading={loading} messages={messages} userName={userName} />
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#101114] via-[#101114]/80 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#101114] via-[#101114]/62 to-transparent" />
       <div className="relative z-10">
         <MessageInput
           aiModel={aiModel}

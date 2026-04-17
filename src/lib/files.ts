@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -22,24 +20,39 @@ export async function persistUpload(file: File) {
     throw new Error("Ukuran file maksimal 10MB");
   }
 
-  const extension = path.extname(file.name) || guessExtension(file.type);
-  const fileName = `${randomUUID()}${extension}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  const storagePath = path.join(uploadDir, fileName);
-
-  await mkdir(uploadDir, { recursive: true });
-
   const arrayBuffer = await file.arrayBuffer();
-  await writeFile(storagePath, Buffer.from(arrayBuffer));
+  const buffer = Buffer.from(arrayBuffer);
+  const uploadId = randomUUID();
+  const extension = guessExtension(file.type);
+  const fileName = normalizeFileName(file.name, extension);
+  const publicUrl = toDataUrl(buffer, file.type);
 
   return {
-    id: randomUUID(),
-    fileName: file.name,
+    id: uploadId,
+    fileName,
     fileType: file.type,
     fileSize: file.size,
-    storagePath: `/uploads/${fileName}`,
-    publicUrl: `/uploads/${fileName}`,
+    storagePath: `inline:${uploadId}`,
+    publicUrl,
   };
+}
+
+function normalizeFileName(originalName: string, fallbackExtension: string) {
+  const trimmed = originalName.trim();
+
+  if (!trimmed) {
+    return `file${fallbackExtension}`;
+  }
+
+  if (/\.[a-z0-9]+$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `${trimmed}${fallbackExtension}`;
+}
+
+function toDataUrl(buffer: Buffer, mimeType: string) {
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
 function guessExtension(mimeType: string) {
@@ -47,6 +60,7 @@ function guessExtension(mimeType: string) {
   if (mimeType === "text/plain") return ".txt";
   if (mimeType === "text/markdown") return ".md";
   if (mimeType === "image/jpg") return ".jpg";
+  if (mimeType === "image/jpeg") return ".jpg";
   if (mimeType === "image/png") return ".png";
   if (mimeType === "image/webp") return ".webp";
   return ".jpg";
