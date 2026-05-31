@@ -88,8 +88,20 @@ textarea {
 .prose-chat pre {
   overflow-x: auto;
   border-radius: 1rem;
-  background: #1d1d1d;
+  background: #13151c;
   padding: 1rem;
+}
+
+.prose-chat .hljs {
+  background: #13151c;
+  color: #e5e7eb;
+}
+
+.prose-chat pre code.hljs {
+  display: block;
+  background: transparent;
+  color: inherit;
+  padding: 0;
 }
 
 .prose-chat code {

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { Camera, BarChart3, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +32,58 @@ type CurrentUserRank = {
   totalTokens: number;
 } | null;
 
+type AvatarMetrics = {
+  naturalWidth: number;
+  naturalHeight: number;
+  baseScale: number;
+};
+
+type AvatarOffset = {
+  x: number;
+  y: number;
+};
+
 const numberFormatter = new Intl.NumberFormat("id-ID");
+const AVATAR_CROP_SIZE = 260;
+const AVATAR_OUTPUT_SIZE = 320;
+
+async function loadImageFromUrl(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new window.Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error("Gagal memuat preview foto"));
+    element.src = url;
+  });
+}
+
+function buildAvatarMetrics(image: HTMLImageElement): AvatarMetrics {
+  return {
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+    baseScale: Math.max(
+      AVATAR_CROP_SIZE / image.naturalWidth,
+      AVATAR_CROP_SIZE / image.naturalHeight,
+    ),
+  };
+}
+
+function getMaxCropOffset(metrics: AvatarMetrics, zoom: number): AvatarOffset {
+  const renderedScale = metrics.baseScale * zoom;
+
+  return {
+    x: Math.max(0, (metrics.naturalWidth * renderedScale - AVATAR_CROP_SIZE) / 2),
+    y: Math.max(0, (metrics.naturalHeight * renderedScale - AVATAR_CROP_SIZE) / 2),
+  };
+}
+
+function clampCropOffset(offset: AvatarOffset, metrics: AvatarMetrics, zoom: number): AvatarOffset {
+  const maxOffset = getMaxCropOffset(metrics, zoom);
+
+  return {
+    x: clamp(offset.x, -maxOffset.x, maxOffset.x),
+    y: clamp(offset.y, -maxOffset.y, maxOffset.y),
+  };
+}
 
 export function ProfileForm({
   currentUserRank,
@@ -50,18 +101,33 @@ export function ProfileForm({
   const router = useRouter();
   const { update } = useSession();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dragStateRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "usage">("profile");
   const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string | null>(null);
+  const [pendingAvatarMetrics, setPendingAvatarMetrics] = useState<AvatarMetrics | null>(null);
   const [cropZoom, setCropZoom] = useState(1);
-  const [cropX, setCropX] = useState(0);
-  const [cropY, setCropY] = useState(0);
+  const [cropOffset, setCropOffset] = useState<AvatarOffset>({ x: 0, y: 0 });
 
   const displayName = defaultName || "User";
   const initial = displayName.charAt(0).toUpperCase() || "U";
+
+  useEffect(() => {
+    return () => {
+      if (pendingAvatarPreview) {
+        URL.revokeObjectURL(pendingAvatarPreview);
+      }
+    };
+  }, [pendingAvatarPreview]);
 
   async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -82,15 +148,24 @@ export function ProfileForm({
       return;
     }
 
-    if (pendingAvatarPreview) {
-      URL.revokeObjectURL(pendingAvatarPreview);
-    }
+    const previewUrl = URL.createObjectURL(file);
 
-    setPendingAvatarFile(file);
-    setPendingAvatarPreview(URL.createObjectURL(file));
-    setCropZoom(1);
-    setCropX(0);
-    setCropY(0);
+    try {
+      const image = await loadImageFromUrl(previewUrl);
+
+      if (pendingAvatarPreview) {
+        URL.revokeObjectURL(pendingAvatarPreview);
+      }
+
+      setPendingAvatarFile(file);
+      setPendingAvatarPreview(previewUrl);
+      setPendingAvatarMetrics(buildAvatarMetrics(image));
+      setCropZoom(1);
+      setCropOffset({ x: 0, y: 0 });
+    } catch (error) {
+      URL.revokeObjectURL(previewUrl);
+      toast.error(error instanceof Error ? error.message : "Gagal memuat foto profil");
+    }
   }
 
   function closeCropper() {
@@ -98,26 +173,68 @@ export function ProfileForm({
       URL.revokeObjectURL(pendingAvatarPreview);
     }
 
+    dragStateRef.current = null;
     setPendingAvatarFile(null);
     setPendingAvatarPreview(null);
+    setPendingAvatarMetrics(null);
     setCropZoom(1);
-    setCropX(0);
-    setCropY(0);
+    setCropOffset({ x: 0, y: 0 });
+  }
+
+  function handleCropPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (!pendingAvatarMetrics) {
+      return;
+    }
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: cropOffset.x,
+      originY: cropOffset.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleCropPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!pendingAvatarMetrics || !dragStateRef.current || dragStateRef.current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const nextOffset = {
+      x: dragStateRef.current.originX + event.clientX - dragStateRef.current.startX,
+      y: dragStateRef.current.originY + event.clientY - dragStateRef.current.startY,
+    };
+
+    setCropOffset(clampCropOffset(nextOffset, pendingAvatarMetrics, cropZoom));
+  }
+
+  function handleCropPointerEnd(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragStateRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    dragStateRef.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function handleZoomChange(nextZoomValue: string) {
+    const nextZoom = Number(nextZoomValue);
+    setCropZoom(nextZoom);
+
+    if (pendingAvatarMetrics) {
+      setCropOffset((current) => clampCropOffset(current, pendingAvatarMetrics, nextZoom));
+    }
   }
 
   async function createCroppedAvatarFile(file: File) {
     const imageUrl = pendingAvatarPreview ?? URL.createObjectURL(file);
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new window.Image();
-      element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error("Gagal memuat preview foto"));
-      element.src = imageUrl;
-    });
+    const image = await loadImageFromUrl(imageUrl);
+    const metrics = pendingAvatarMetrics ?? buildAvatarMetrics(image);
 
     const canvas = document.createElement("canvas");
-    const outputSize = 512;
-    canvas.width = outputSize;
-    canvas.height = outputSize;
+    canvas.width = AVATAR_OUTPUT_SIZE;
+    canvas.height = AVATAR_OUTPUT_SIZE;
 
     const context = canvas.getContext("2d");
 
@@ -125,12 +242,12 @@ export function ProfileForm({
       throw new Error("Canvas browser tidak tersedia");
     }
 
-    const minSide = Math.min(image.naturalWidth, image.naturalHeight);
-    const cropSize = minSide / cropZoom;
-    const maxOffsetX = (image.naturalWidth - cropSize) / 2;
-    const maxOffsetY = (image.naturalHeight - cropSize) / 2;
-    const sourceX = clamp((image.naturalWidth - cropSize) / 2 + (cropX / 100) * maxOffsetX, 0, image.naturalWidth - cropSize);
-    const sourceY = clamp((image.naturalHeight - cropSize) / 2 + (cropY / 100) * maxOffsetY, 0, image.naturalHeight - cropSize);
+    const renderedScale = metrics.baseScale * cropZoom;
+    const cropSize = AVATAR_CROP_SIZE / renderedScale;
+    const sourceCenterX = metrics.naturalWidth / 2 - cropOffset.x / renderedScale;
+    const sourceCenterY = metrics.naturalHeight / 2 - cropOffset.y / renderedScale;
+    const sourceX = clamp(sourceCenterX - cropSize / 2, 0, image.naturalWidth - cropSize);
+    const sourceY = clamp(sourceCenterY - cropSize / 2, 0, image.naturalHeight - cropSize);
 
     context.drawImage(
       image,
@@ -140,8 +257,8 @@ export function ProfileForm({
       cropSize,
       0,
       0,
-      outputSize,
-      outputSize,
+      AVATAR_OUTPUT_SIZE,
+      AVATAR_OUTPUT_SIZE,
     );
 
     const outputType = file.type === "image/png" || file.type === "image/webp" ? file.type : "image/jpeg";
@@ -193,6 +310,14 @@ export function ProfileForm({
       setUploadingAvatar(false);
     }
   }
+
+  const previewScale = pendingAvatarMetrics ? pendingAvatarMetrics.baseScale * cropZoom : 1;
+  const previewWidth = pendingAvatarMetrics
+    ? pendingAvatarMetrics.naturalWidth * previewScale
+    : AVATAR_CROP_SIZE;
+  const previewHeight = pendingAvatarMetrics
+    ? pendingAvatarMetrics.naturalHeight * previewScale
+    : AVATAR_CROP_SIZE;
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -310,7 +435,7 @@ export function ProfileForm({
               <div className="rounded-[1.5rem] border border-[color:var(--color-border)] bg-[color:var(--color-muted)] px-4 py-4">
                 <p className="text-sm font-medium text-[color:var(--color-foreground)]">Nama akun tidak bisa diubah</p>
                 <p className="mt-1 text-sm leading-6 text-[color:var(--color-muted-foreground)]">
-                  Saat ini hanya foto profil yang bisa diganti dari halaman ini. Setelah pilih foto, kamu bisa preview dan crop dulu sebelum upload.
+                  Saat ini hanya foto profil yang bisa diganti dari halaman ini. Setelah pilih foto, cukup geser posisi foto dan atur zoom bila perlu.
                 </p>
               </div>
 
@@ -424,7 +549,7 @@ export function ProfileForm({
               <div>
                 <h2 className="text-xl font-semibold text-[color:var(--color-foreground)]">Preview foto profil</h2>
                 <p className="mt-1 text-sm text-[color:var(--color-muted-foreground)]">
-                  Atur crop dulu sebelum foto diupload.
+                  Geser fotonya langsung dengan jari atau mouse, lalu atur zoom bila perlu.
                 </p>
               </div>
               <button
@@ -438,16 +563,23 @@ export function ProfileForm({
             </div>
 
             <div className="mx-auto flex w-full max-w-[260px] flex-col items-center gap-5">
-              <div className="relative h-[260px] w-[260px] overflow-hidden rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-muted)]">
+              <div
+                className="relative h-[260px] w-[260px] touch-none overflow-hidden rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-muted)]"
+                onPointerDown={handleCropPointerDown}
+                onPointerMove={handleCropPointerMove}
+                onPointerUp={handleCropPointerEnd}
+                onPointerCancel={handleCropPointerEnd}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   alt="Preview crop foto profil"
-                  className="h-full w-full object-cover"
+                  className="absolute left-1/2 top-1/2 max-w-none select-none"
+                  draggable={false}
                   src={pendingAvatarPreview}
                   style={{
-                    objectPosition: `${50 + cropX / 2}% ${50 + cropY / 2}%`,
-                    transform: `scale(${cropZoom})`,
-                    transformOrigin: "center center",
+                    height: `${previewHeight}px`,
+                    transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px))`,
+                    width: `${previewWidth}px`,
                   }}
                 />
               </div>
@@ -457,25 +589,9 @@ export function ProfileForm({
                   label={`Zoom ${cropZoom.toFixed(1)}x`}
                   max={2.5}
                   min={1}
-                  onChange={(value) => setCropZoom(Number(value))}
+                  onChange={handleZoomChange}
                   step={0.1}
                   value={cropZoom}
-                />
-                <RangeField
-                  label={`Geser horizontal ${cropX}`}
-                  max={100}
-                  min={-100}
-                  onChange={(value) => setCropX(Number(value))}
-                  step={1}
-                  value={cropX}
-                />
-                <RangeField
-                  label={`Geser vertikal ${cropY}`}
-                  max={100}
-                  min={-100}
-                  onChange={(value) => setCropY(Number(value))}
-                  step={1}
-                  value={cropY}
                 />
               </div>
             </div>

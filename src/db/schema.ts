@@ -16,7 +16,7 @@ export const users = mysqlTable("users", {
   phone: varchar("phone", { length: 20 }).unique(),
   email: varchar("email", { length: 255 }).unique(),
   passwordHash: varchar("password_hash", { length: 255 }),
-  avatarUrl: varchar("avatar_url", { length: 500 }),
+  avatarUrl: text("avatar_url"),
   createdAt: datetime("created_at", { mode: "date" }).notNull(),
   updatedAt: datetime("updated_at", { mode: "date" }).notNull(),
 });

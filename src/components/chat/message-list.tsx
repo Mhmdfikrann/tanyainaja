@@ -41,7 +41,7 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6 pb-44 pt-16">
+      <div className="flex flex-1 items-center justify-center px-6 pb-6 pt-16">
         <div className="max-w-2xl text-center">
           <h1 className="text-3xl font-medium text-[#f5eded] sm:text-5xl">Hey, {firstName}. Siap mulai?</h1>
           <p className="mt-4 text-sm leading-7 text-[#aa9898] sm:text-base">
@@ -55,7 +55,7 @@ export function MessageList({
 
   return (
     <div className="app-scrollbar min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 pb-44 pt-8 sm:px-6">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-end gap-5 px-4 pb-5 pt-8 sm:px-6 sm:pb-6">
         {messages.map((message) => (
           <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
             {message.role === "user" ? (
